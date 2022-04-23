@@ -1,7 +1,10 @@
 from unicodedata import name
+from urllib import response
 from django.test import TestCase
 from django.urls import reverse
 from .models import Video
+from django.db import IntegrityError
+from django.core.exceptions import ValidationError
 
 class TestHomePageMessage(TestCase):
 
@@ -42,12 +45,12 @@ class TestAddVideos(TestCase):
     def test_add_video_invalid_url_not_added(self):
 
         invalid_videos_urls = [
-            'https://www.youtube.com/watch'
-            'https://www.youtube.com/watch?'
-            'https://www.youtube.com/watch?abc=123'
-            'https://www.youtube.com/watch?v='
-            'https://www.github.com'
-            'https://www.minneapolis.edu'
+            'https://www.youtube.com/watch',
+            'https://www.youtube.com/watch?',
+            'https://www.youtube.com/watch?abc=123',
+            'https://www.youtube.com/watch?v=',
+            'https://www.github.com',
+            'https://www.minneapolis.edu',
             'https://www.minneapolis.edu?v=1234'
         ]
 
@@ -89,9 +92,56 @@ class TestVideoList(TestCase):
         videos_in_template = list(response.context['videos'])
 
         self.assertEqual(videos_in_template, expected_video_order)
+
+    def test_no_video_message(self):
+        url = reverse('video_list')
+        response = self.client.get(url)
+        self.assertContains(response, 'No Videos')
+        self.assertEqual(0, len(response.context['videos']))
     
+    def test_video_number_message_one_video(self):
+        v1 = Video.objects.create(name='ZXY', notes='example', url='https://www.youtube.com/watch?v=123')
+        url = reverse('video_list')
+        response = self.client.get(url)
+        self.assertContains(response, '1 video')
+        self.assertNotContains(response, '1 videos')
+
+    def test_video_number_message_two_or_more_videos(self):
+        v1 = Video.objects.create(name='ZXY', notes='example', url='https://www.youtube.com/watch?v=123')
+        v2 = Video.objects.create(name='abc', notes='example', url='https://www.youtube.com/watch?v=124')
+        url = reverse('video_list')
+        response = self.client.get(url)
+        self.assertContains(response, '2 videos') 
+
 class TestVideoSearch(TestCase):
     pass
 
 class TestVideoModel(TestCase):
-    pass
+
+    def test_invalid_url_raises_validation_error(self):
+        invalid_videos_urls = [
+            'https://www.youtube.com/watch',
+            'https://www.youtube.com/watch/somethingelse',
+            'https://www.youtube.com/watch/somethingelse?v=1234',
+            'https://www.youtube.com/watch?',
+            'https://www.youtube.com/watch?abc=123',
+            'https://www.youtube.com/watch?v=',
+            'https://www.github.com',
+            '12345',
+            'hhhttps://www.youtube.com/watch',
+            'https://www.minneapolis.edu',
+            'https://www.minneapolis.edu?v=1234'
+        ]
+        for invalid_video_urls in invalid_videos_urls:
+            with self.assertRaises(ValidationError):
+                Video.objects.create(name='example', url=invalid_video_urls, notes='example note')
+
+        self.assertEqual(0, Video.objects.count())
+
+
+    
+    def test_duplicate_video_raises_integrity_error(self):
+        v1 = Video.objects.create(name='ZXY', notes='example', url='https://www.youtube.com/watch?v=123')
+        with self.assertRaises(IntegrityError):
+            Video.objects.create(name='ZXY', notes='example', url='https://www.youtube.com/watch?v=123')
+

@@ -15,7 +15,7 @@
     <button>Clear Search</button>
 </a>
 
-<h3>{{ videos|length }} video {{ videos|length|pluralize }} </h3>
+<h3>{{ videos|length }} video{{ videos|length|pluralize }} </h3>
 
 {% for video in videos %}
     <div>

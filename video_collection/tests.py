@@ -145,3 +145,10 @@ class TestVideoModel(TestCase):
         with self.assertRaises(IntegrityError):
             Video.objects.create(name='ZXY', notes='example', url='https://www.youtube.com/watch?v=123')
 
+class TestVideoDetails(TestCase):
+
+    def test_video_details(self):
+        video_1 = Video.objects.get(pk=1)
+        response = self.client.get(reverse('video_details', kwargs={'video_pk':1}))
+        self.assertTemplateUsed(response, 'video_collection/video_details.html')
+
